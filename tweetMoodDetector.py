@@ -169,7 +169,9 @@ optimiser = optim.Adam(lstmClassifier.parameters(), lr = learningRate)
 lossFunction = nn.CrossEntropyLoss()
 
 
-def training(model, optimiser, lossFunction, epochs, learningRate, trainingData, testingData, device, hiddenSize, layers):
+def training(model, optimiser, lossFunction, epochs, trainingData, testingData, device, hiddenSize, layers):
+    model.to(device)
+    
     trainingLoss = []
     testingLoss = []
     trainingAccuracy = []
@@ -180,11 +182,15 @@ def training(model, optimiser, lossFunction, epochs, learningRate, trainingData,
 
     progress = trange(0, epochs, leave=False, desc="Epoch")
     
-    currentTrainingAcc = 0
-    currentTestingAcc = 0
+    
 
 # Loop through each epoch
     for epoch in progress:
+        currentTrainingAcc = 0
+        currentTrainingLoss = 0
+        currentTestingAcc = 0
+        currentTestingLoss = 0
+        
         # Update progress bar description with current accuracy
         progress.set_postfix_str('Accuracy: Train %.2f%%, Test %.2f%%' % (currentTrainingAcc * 100, currentTestingAcc * 100))
         
@@ -211,14 +217,16 @@ def training(model, optimiser, lossFunction, epochs, learningRate, trainingData,
             loss.backward()
             optimiser.step()
             
-            trainingAccuracy.append(loss.item())
+            currentTrainingLoss += loss.item()
             
             currentTrainingAcc += (prediction[:, -1, :].argmax(1) == label).sum()
             steps += batchSize
             
+        trainingLoss.append(currentTrainingLoss/len(trainingLoader))
         currentTrainingAcc = (currentTrainingAcc/steps).item()
         trainingAccuracy.append(currentTrainingAcc)
         
+        #Testing
         model.eval()
         steps = 0
         
@@ -236,12 +244,15 @@ def training(model, optimiser, lossFunction, epochs, learningRate, trainingData,
                 prediction, hidden, memory = model(tweet, hidden, memory)
                 
                 loss = lossFunction(prediction[:, -1, :], label)
-                testingAccuracy.append(loss.item())
                 
-                currentTestingAcc += (prediction[:, -1, :].argmax(1)).sum
+                currentTestingLoss += loss.item()
+                
+                currentTestingAcc += (prediction[:, -1, :].argmax(1) == label).sum()
                 steps += batchSize
-            currentTestingAcc = (currentTrainingAcc/steps).item()
-            testingAccuracy.append(currentTrainingAcc)
+
+            testingLoss.append(currentTestingLoss/len(testingLoader))
+            currentTestingAcc = (currentTestingAcc/steps).item()
+            testingAccuracy.append(currentTestingAcc)
     
     
     #plot loss
@@ -268,4 +279,19 @@ def training(model, optimiser, lossFunction, epochs, learningRate, trainingData,
 
 
     torch.save(lstmClassifier.state_dict(), 'lstmClassifier.pth')
+    
+#-------------------------Running-------------------------------------
+
+
+training(
+    model=lstmClassifier,
+    optimiser=optimiser,
+    lossFunction=lossFunction,
+    epochs=epochs,
+    trainingData=trainingSet,
+    testingData=testingSet,
+    device=device,
+    hiddenSize=hiddenSize,
+    layers=layers
+)
 #indexedTweets = [indexVocab(tokens, vocab) for tokens in tokenizedTweets]
