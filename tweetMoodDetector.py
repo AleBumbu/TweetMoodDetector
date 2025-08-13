@@ -78,7 +78,7 @@ def loadVocab():
 #-------------------------Pre-processing-------------------------------------
 
 def preprocessTweet(text, vocab, unkID, sosID,eosID):
-    tokens = [token.text.lower() for token in tokenize(text)]
+    tokens = [token.lower() for token in tokenize(text)]
     
     tokenNumbers = [vocab.get(token, unkID) for token in tokens]
     tokenNumbers = [sosID] + tokenNumbers + [eosID]
